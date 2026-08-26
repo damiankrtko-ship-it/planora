@@ -20,7 +20,7 @@ Obsah poznámok a checklistov, názvy a poznámky úloh, kalendárové udalosti 
 ### Predpokladaní útočníci
 
 - **XSS alebo škodlivý obsah:** útočník vloží HTML/URL do poľa, alebo sa kompromituje závislosť či build.
-- **Iná stránka v prehliadači:** pokúsi sa zneužiť cross-origin izoláciu; nemá dostať prístup k localStorage/IndexedDB Planory.
+- **Iná stránka v prehliadači:** pokúsi sa zneužiť cross-origin izoláciu; nemá dostať prístup k localStorage Planory.
 - **Škodlivé rozšírenie, malware alebo osoba s prístupom k zariadeniu:** môže čítať pamäť, súbory alebo profil prehliadača. Local-first neznamená ochranu proti nim.
 - **Chybný alebo zámerne upravený import:** pokúsi sa vyčerpať pamäť, prepísať dáta, vložiť neplatné ID alebo škodlivé hodnoty.
 - **Supply-chain riziko:** napadnutý balík, transitive dependency alebo build pipeline zmení klientsky kód.
@@ -37,11 +37,15 @@ Obsah poznámok, názvov, lokácií, tagov a importovaných dát je nedôveryhod
 
 React/Vue escaping nenahrádza bezpečné spracovanie atribútov, URL ani DOM API. Po každej zmene renderovania vykonať test s payloadmi ako `<img src=x onerror=alert(1)>`, úvodzovkami, SVG a URL. Service worker, cache a import nesmú obchádzať rovnaké pravidlá.
 
-### localStorage, IndexedDB a strata dát
+### localStorage v MVP a strata dát
 
-IndexedDB je kanonické úložisko; localStorage používajte iba na necitlivé UI preferencie. localStorage je synchronné, kapacitne obmedzené (často približne 5 MB, bez garancie) a zlyhanie/kvóta môže prísť pri ľubovoľnom zápise. Neuchovávajte tam poznámky, exporty ani tokeny.
+Aktuálne MVP používa `localStorage` ako lokálne úložisko používateľských dát. Je synchronné, kapacitne obmedzené (často približne 5 MB, bez garancie) a zápis môže zlyhať napríklad pre kvótu, súkromný režim alebo nedostupnosť úložiska. Neuchovávajte tam tokeny; JSON export je používateľom spustený súbor a nemá sa ukladať späť do `localStorage`.
 
-Zápisy musia byť transakčné a migrácie opakovateľné. Zachytávajte `QuotaExceededError` aj nedostupnosť úložiska, zachovajte koncept v pamäti, zobrazte zrozumiteľnú chybu a ponúknite export. Nikdy netvrďte „zálohované“ alebo „synchronizované“ iba preto, že zápis do prehliadača uspel. Používateľovi vysvetlite, že vymazanie site data, súkromný režim, čistenie prehliadača alebo strata zariadenia môže dáta odstrániť.
+Každé čítanie aj zapisovanie musí byť v `try/catch` a musí bezpečne spracovať neplatný alebo poškodený obsah. Pred použitím dáta validujte voči verziovanej schéme; migrácie schémy majú byť explicitné, opakovateľné a odmietnuť neznámu alebo nebezpečnú verziu. Nastavte limity veľkosti uloženého payloadu, počtu záznamov a dĺžok polí, aby veľké alebo poškodené dáta nevyčerpali pamäť.
+
+Pri zlyhaní zápisu zachovajte posledný platný stav a aktuálny koncept v pamäti, zabráňte čiastočnému prepísaniu, zobrazte zrozumiteľnú chybu a ponúknite export alebo obnovu. Ak sa úložisko nedá čítať, použite bezpečný read-only alebo prázdny stav s potvrdením používateľa; nikdy ticho neprepíšte existujúce dáta. UI musí jasne upozorniť, že údaje môžu byť citlivé a že vymazanie site data, súkromný režim, čistenie prehliadača alebo strata zariadenia môže spôsobiť ich nenávratnú stratu. Nikdy netvrďte „zálohované“ alebo „synchronizované“ iba preto, že zápis do prehliadača uspel.
+
+Odporúčaná budúca migrácia je presun používateľských dát do `IndexedDB`, ak narastie objem dát alebo potreba robustnejších transakcií. Migrácia musí mať samostatný návrh, detekciu verzie, zálohu/export pred zmenou, atómový rollback a otestovanú obnovu; v aktuálnom MVP však IndexedDB ešte nie je kanonickým úložiskom.
 
 ### Súkromie a telemetria
 
@@ -89,7 +93,8 @@ Pred každým release odškrtnúť a uložiť dôkaz (CI log, test alebo link na
 - [ ] XSS testy pokrývajú poznámky, úlohy, udalosti, tagy, URL, import a všetky DOM renderery; nebezpečné API sú zakázané alebo preskúmané.
 - [ ] CSP je vynútená, bez neočakávaných porušení; hlavičky a HTTPS boli overené na stagingu.
 - [ ] Neodosiela sa obsah, tracker ani vzdialený zdroj, ktorý nie je schválený a zdokumentovaný.
-- [ ] IndexedDB migrácie, transakčné zápisy, quota error, poškodený profil a vymazanie dát majú recovery cestu; localStorage neobsahuje používateľský obsah ani tokeny.
+- [ ] `localStorage` čítanie a zápis sú chránené `try/catch`; testované sú quota error, nedostupnosť, poškodená/verziou nekompatibilná schéma, limity, bezpečný fallback, zachovanie konceptu a upozornenie na citlivosť a možnú stratu dát.
+- [ ] IndexedDB migrácia nie je označená ako hotová: ak sa pripravuje, má samostatný návrh a testy exportu, rollbacku a obnovy; v MVP je kanonickým úložiskom `localStorage`.
 - [ ] Export/import testuje veľký súbor, neplatný JSON/schema/ID/dátum, XSS payload, duplicity, referencie, konflikt a atómový rollback bez čiastočnej zmeny.
 - [ ] Je overená kompatibilita service workera/cache a nehrozí servovanie zastaraného alebo zmiešaného buildu.
 - [ ] `npm audit`/SCA a secret scan sú čisté alebo majú zdokumentované, časovo obmedzené výnimky s vlastníkom.
