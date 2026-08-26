@@ -24,3 +24,17 @@ button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-
   .calHead .todayBtn { grid-column: 3; grid-row: 3; padding: 8px 4px; }
   .calHead h2 { padding: 8px 0; }
 }
+
+/* Calendar cells must be allowed to shrink around their controls. */
+.week, .days { min-width: 0; }
+.day { min-width: 0; overflow: hidden; }
+.day > div { min-width: 0; max-width: 100%; overflow: hidden; display: flex; align-items: center; }
+.calendarEvent { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
+.rowAction { flex: 0 0 44px; }
+.pinAction { width: 44px; min-width: 44px; height: 44px; }
+.tags button { width: 44px; min-width: 44px; height: 44px; padding: 10px; display: grid; place-items: center; }
+@media (max-width: 760px) {
+  .day > div { position: relative; }
+  .day > div .rowAction { position: absolute; top: 0; right: 0; z-index: 1; background: var(--surface); }
+  .day > div .calendarEvent { padding-right: 44px; }
+}
